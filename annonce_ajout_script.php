@@ -18,7 +18,7 @@ if($_SERVER["REQUEST_METHOD"]== "POST" && !empty($_POST))
         $surfaceHabitable = $_POST["an_surf_hab"];
         $surfaceTotal = $_POST["an_surf_tot"];
         $option = $_POST['anoption'];
-        var_dump($option);
+        
         $prix = $_POST["an_prix"];
         $diagnosticBouton = $_POST["an_diagnostic"];
         
@@ -135,8 +135,17 @@ if($_SERVER["REQUEST_METHOD"]== "POST" && !empty($_POST))
                 // var_dump($errors['diagnostic']);
                 $valid= false; 
         }
+        
+        // $_FILES["fichier"];
+        // var_dump($_FILES);
+        
+        
 
-        // // si il y a des erreurs dans le tableau alors on envois les messages .
+
+
+
+        
+      
         if(!empty($errors))
         {
         
@@ -153,9 +162,9 @@ if($_SERVER["REQUEST_METHOD"]== "POST" && !empty($_POST))
                 if($valid)
                 {
                         // var_dump($valid);
-                //  ********************************* requête **************************************************
+                //  ********************************* requête pour l'annonce **************************************************
 
-
+                        
                         // preparation de la requete d'insertion sans injection sql
                         $pdoStat = $db->prepare("INSERT INTO annonces (an_offre,an_type,an_pieces,an_ref,an_titre,
                                                                         an_description,an_local,an_surf_hab,an_surf_tot
@@ -181,27 +190,63 @@ if($_SERVER["REQUEST_METHOD"]== "POST" && !empty($_POST))
                         // var_dump($pdoStat);
                         $an_id= $db->lastInsertId();//recuperation du dernier id inserer
 
-
+//************************requete pour les options ********************************************************************* */
 
 
                        //pour chaque objet $new dans la variable option
                         foreach($option as $newValueOption)
                         {//prepare la requete d'insertion
                                 $requete = $db->prepare("INSERT INTO annonce_option (an_id,opt_id) VALUES (:an_id, :opt_id)");
-                              
+                
 
                                 $requete->execute([
                                         ':an_id' => (int) $an_id,//recuperation du dernier id inserer en bdd
                                         ':opt_id' => (int) $newValueOption
                                 ]);
                         }
-                          //    $requete->bindvalue(':an_id',$an_id,PDO::PARAM_INT);
+                                //$requete->bindvalue(':an_id',$an_id,PDO::PARAM_INT);
                                 //bindvalue donne la valeur a la requete preparer // :an_id est remplacé dans la requete  $an_id
-                                // $requete->bindvalue(':an_id',$newValueOption,PDO::PARAM_INT);
+                                // $requete->bindvalue(':opt_id',$newValueOption,PDO::PARAM_INT);
+//********************** requete pour la photo**************************************************************************
+                        
+                
+                        $fichier = $_FILES['fichier'];
+                        $mk = mkdir("annexes/photos/annonce_".$an_id);
+
+                        var_dump($fichier);
+                        //boucle sur [$_files ][name] et elle recupere la clé et sa valeur 
+                        foreach ($_FILES["fichier"]["name"] as $key => $value) 
+                        {
+                                $extension = pathinfo($value, PATHINFO_EXTENSION);
+                                // var_dump($value);
+                                if ($value ) 
+                                {
+                                        $tmp_name = $_FILES["fichier"]["tmp_name"][$key];
+                                    // basename() peut empêcher les attaques "filesystem traversal";
+                                    // une autre validation/néttoyage du nom de fichier peux être appropriée
+        
+                                        $name = basename($_FILES["fichier"]["name"][$key]);
+                                        if($mk)
+                                        {
+                                                $move = move_uploaded_file($_FILES["fichier"]["tmp_name"][$key],"annexes/photos/annonce_".$an_id."/".$an_id. "-" .$key.".".$extension);
+                                                $photo = $db -> prepare("INSERT INTO photo (pho_nom, an_id) VALUE (:pho_nom, :an_id)");
+                                                $photo->execute([
+                                                        ':pho_nom' => $an_id. "-" .$key,
+                                                        ':an_id' => (int) $an_id
+                                                ]);
+                                        }
+
+                                        //     var_dump($move);
+                                        //     var_dump($_FILES["fichier"]["tmp_name"][$key]);
+                                        //     var_dump($an_id);
+                                        //     var_dump($key);
+                                        //     var_dump($extension);
+                                }
+                        }
 
 
                          //libère la connection au serveur de BDD
-                         $pdoStat->closeCursor();
+                        $pdoStat->closeCursor();
                         //redirection vers la page index.php
                         header("Location: index.php");
 
